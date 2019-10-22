@@ -12,7 +12,16 @@
 
 #define MYPORT "22444"
 #define MAXBUFLEN 100
-#define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 21444\n"
+#define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
+
+// get sockaddr, IPv4 or IPv6
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 int main(void) {
   int sockfd;
@@ -63,4 +72,20 @@ int main(void) {
   freeaddrinfo(servinfo);
 
   printf(BOOT_UP_MESSAGE);
+
+  while (1) {
+    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
+        (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+      perror("recvfrom");
+      exit(1);
+    }
+
+    printf("listener: got packet from %s\n",
+    inet_ntop(their_addr.ss_family,
+        get_in_addr((struct sockaddr *)&their_addr),
+        s, sizeof s));
+    printf("listener: packet is %d bytes long\n", numbytes);
+    buf[numbytes] = '\0';
+    printf("listener: packet contains \"%s\"\n", buf);
+  }
 }
