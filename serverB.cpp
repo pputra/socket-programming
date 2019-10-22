@@ -10,9 +10,9 @@
 #include <arpa/inet.h> 
 #include <sys/wait.h>
 
-#define MYPORT "21444"
+#define MYPORT "22444"
 #define MAXBUFLEN 100
-#define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n"
+#define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 21444\n"
 
 int main(void) {
   int sockfd;
