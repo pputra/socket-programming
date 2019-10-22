@@ -12,6 +12,7 @@
 #include <signal.h>
 
 #define TCP_PORT "24444"  // the port users will be connecting to
+#define HOST_NAME "localhost" // hostname
 #define BACKLOG 10     // how many pending connections queue will hold
 #define BOOT_UP_MESSAGE "The AWS is up and running.\n"
 
@@ -50,7 +51,7 @@ int main(void) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE; // use my IP
 
-  if ((rv = getaddrinfo(NULL, TCP_PORT, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(HOST_NAME, TCP_PORT, &hints, &servinfo)) != 0) {
       fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
       return 1;
   }

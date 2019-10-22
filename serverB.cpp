@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 
 #define MYPORT "22444"
+#define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
 
@@ -42,7 +43,7 @@ int main(void) {
   // fill ip automatically
   hints.ai_flags = AI_PASSIVE;
 
-  if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(HOST_NAME, MYPORT, &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return 1;
   }
@@ -72,6 +73,8 @@ int main(void) {
   freeaddrinfo(servinfo);
 
   printf(BOOT_UP_MESSAGE);
+
+  addr_len = sizeof their_addr;
 
   while (1) {
     if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,

@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 
 #define MYPORT "21444"
+#define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n"
 
@@ -42,7 +43,7 @@ int main(void) {
   // fill ip automatically
   hints.ai_flags = AI_PASSIVE;
 
-  if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(HOST_NAME, MYPORT, &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return 1;
   }
