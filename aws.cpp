@@ -15,6 +15,8 @@
 #define BACKLOG 10     // how many pending connections queue will hold
 #define BOOT_UP_MESSAGE "The AWS is up and running.\n"
 
+#define MAXDATASIZE 100 // max number of bytes we can get at once
+
 void sigchld_handler(int s) {
   // waitpid() might overwrite errno, so we save and restore it:
   int saved_errno = errno;
@@ -34,7 +36,7 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 int main(void) {
-  int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
+  int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr; // connector's address information
   socklen_t sin_size;
@@ -112,7 +114,16 @@ int main(void) {
 
     if (!fork()) { // this is the child process
       close(sockfd); // child doesn't need the listener
-      if (send(new_fd, "ping", 4, 0) == -1) perror("send");
+      char buf[MAXDATASIZE];
+      
+      if ((numbytes = recv(new_fd, buf, MAXDATASIZE - 1, 0)) == -1) {
+        perror("recv");
+        exit(1);
+      }
+
+      buf[numbytes] = '\0';
+      printf("aws: received '%s'\n",buf);
+
       close(new_fd);
       exit(0);
     }

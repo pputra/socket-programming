@@ -9,8 +9,11 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
 #include <sys/wait.h>
-
 #include <arpa/inet.h>
+
+#include <iostream>
+#include <string>
+using namespace std;
 
 #define AWS_PORT "24444" // the port client will be connecting to 
 #define HOST_NAME "localhost"
@@ -26,6 +29,11 @@ void *get_in_addr(struct sockaddr *sa) {
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+string parse_inputs(char *argv[]) {
+   return string(argv[1]) + " " + 
+    string(argv[2]) + " " + string(argv[3]);
+}
+
 int main(int argc, char *argv[]) {
   int sockfd, numbytes;  
   char buf[MAXDATASIZE];
@@ -33,11 +41,13 @@ int main(int argc, char *argv[]) {
   int rv;
   char s[INET6_ADDRSTRLEN];
 
-  if (argc != 2) {
+  if (argc < 4) {
     fprintf(stderr,"usage: client hostname\n");
     exit(1);
   }
 
+  string user_inputs = parse_inputs(argv);
+ 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -72,14 +82,11 @@ int main(int argc, char *argv[]) {
 
   freeaddrinfo(servinfo);
 
-  if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-    perror("recv");
-    exit(1);
+  if (send(sockfd, user_inputs.c_str(), user_inputs.length(), 0) == -1) {
+     perror("send");
   }
 
-  buf[numbytes] = '\0';
-
-  printf("client: received '%s'\n",buf);
+  printf("data has been sent to AWS server\n");
 
   close(sockfd);
 
