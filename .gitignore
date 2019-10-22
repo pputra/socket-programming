@@ -10,6 +10,8 @@ client
 ##sandbox
 listener
 listener.c
+talker
+talker.c
 
 ### C++ ###
 # Prerequisites
