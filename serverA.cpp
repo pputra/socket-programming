@@ -14,7 +14,7 @@
 #include <fstream>
 #include <string>
 #include <ctype.h>
-#include <unordered_map>
+#include <map>
 #include <vector> 
 
 using namespace std;
@@ -33,12 +33,12 @@ struct Edge {
 struct Map {
   int prop_speed;
   int trans_speed;
-  unordered_map<int, vector<Edge> > maps;
+  map<int, vector<Edge> > maps;
   int num_edges;
   int num_vertices;
 };
 
-unordered_map<string, Map> maps;
+map<string, Map> maps;
 
 // get sockaddr, IPv4 or IPv6
 void *get_in_addr(struct sockaddr *sa) {
@@ -75,12 +75,12 @@ void construct_maps() {
       string mapId = input;
       Map map;
 
-      map.prop_speed = stoi(inputs[++i]);
-      map.trans_speed = stoi(inputs[++i]);
+      map.prop_speed = atoi(inputs[++i].c_str());
+      map.trans_speed = atoi(inputs[++i].c_str());
 
       i++;
       while (true) {
-        if (i >= inputs.size() || isalpha(inputs[i+1][0])) {
+        if (i+1 >= inputs.size() || isalpha(inputs[i+1][0])) {
           break;
         }
         cout << inputs[i] << endl;
