@@ -10,10 +10,35 @@
 #include <arpa/inet.h> 
 #include <sys/wait.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include <unordered_map>
+#include <vector> 
+
+using namespace std;
+
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n"
+#define MAP_FILE_NAME "map.txt"
+
+struct Edge {
+  int dest;
+  int len;
+};
+
+struct Map {
+  int prop_speed;
+  int trans_speed;
+  unordered_map<int, vector<Edge> > maps;
+  int num_edges;
+  int num_vertices;
+};
+
+unordered_map<string, Map> maps;
 
 // get sockaddr, IPv4 or IPv6
 void *get_in_addr(struct sockaddr *sa) {
@@ -24,7 +49,57 @@ void *get_in_addr(struct sockaddr *sa) {
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+vector<string> read_file() {
+  vector<string> inputs;
+  string line;
+  ifstream file(MAP_FILE_NAME);
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      inputs.push_back(line);
+    }
+  }
+
+  file.close();
+
+  return inputs;
+}
+
+void construct_maps() {
+  vector<string> inputs = read_file();
+
+  for (int i = 0; i < inputs.size(); i++) {
+    string input = inputs[i];
+    int num_edges = 0;
+
+    if (isalpha(input[0])) {
+      string mapId = input;
+      Map map;
+
+      map.prop_speed = stoi(inputs[++i]);
+      map.trans_speed = stoi(inputs[++i]);
+
+      i++;
+      while (true) {
+        if (i >= inputs.size() || isalpha(inputs[i+1][0])) {
+          break;
+        }
+        cout << inputs[i] << endl;
+
+        num_edges++;
+        i++;
+      }
+      map.num_edges = num_edges;
+      maps[mapId] = map;
+      cout << mapId << endl;
+      cout << num_edges << endl;
+      cout << "-----" << endl;
+    }
+  }      
+}
+
 int main(void) {
+  construct_maps();
+
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;
@@ -56,7 +131,8 @@ int main(void) {
       continue;
     }
 
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    // avoid namespace conflict with std
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("listener: bind");
       continue;
@@ -76,7 +152,7 @@ int main(void) {
 
   addr_len = sizeof their_addr;
 
-  while (1) {
+  while (true) {
     if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
       perror("recvfrom");
