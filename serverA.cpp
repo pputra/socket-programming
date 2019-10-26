@@ -64,7 +64,22 @@ vector<string> read_file() {
   return inputs;
 }
 
-void parseEdge(string edge_str, map<int, vector<Edge> > &edge_map) {
+void append_edges(int start_node, int dest_node, int edge_len, map<int, vector<Edge> > &edge_map) {
+  Edge edge;
+  edge.dest = dest_node;
+  edge.len = edge_len;
+
+  vector<Edge> prev_edges;
+
+  if (edge_map.find(start_node) != edge_map.end()) {
+    prev_edges = edge_map[start_node];
+  }
+
+  prev_edges.push_back(edge);
+  edge_map[start_node] = prev_edges;
+}
+
+void parse_edges(string edge_str, map<int, vector<Edge> > &edge_map) {
   int start_node;
   int dest_node;
   int edge_len;
@@ -80,7 +95,8 @@ void parseEdge(string edge_str, map<int, vector<Edge> > &edge_map) {
   edge_str = edge_str.substr(stop_index + 1);
   edge_len = atoi(edge_str.c_str());
 
-  cout << start_node << "--" << dest_node << "--" << edge_len << endl;
+  append_edges(start_node, dest_node, edge_len, edge_map);
+  append_edges(dest_node, start_node, edge_len, edge_map);
 }
 
 void construct_maps() {
@@ -88,7 +104,7 @@ void construct_maps() {
 
   for (int i = 0; i < inputs.size(); i++) {
     string input = inputs[i];
-    int num_edges = 0;
+    int num_edges = 1;
 
     if (isalpha(input[0])) {
       Map curr_map;
@@ -105,7 +121,7 @@ void construct_maps() {
         }
         string curr_edge_str = inputs[i];
 
-        parseEdge(curr_edge_str, edge_map);
+        parse_edges(curr_edge_str, edge_map);
 
         num_edges++;
         i++;

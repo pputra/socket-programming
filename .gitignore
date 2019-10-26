@@ -10,6 +10,7 @@ client
 
 ##gdbb outputs
 *.dsYM
+.vscode
 
 ##sandbox
 listener
