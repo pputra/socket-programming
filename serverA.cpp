@@ -22,7 +22,7 @@ using namespace std;
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
-#define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n"
+#define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
 #define MAP_FILE_NAME "map.txt"
 
 struct Edge {
@@ -47,6 +47,21 @@ void *get_in_addr(struct sockaddr *sa) {
   }
 
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+void print_maps_info() {
+  cout << "The Server A has constructed a list of " <<  maps.size() << " maps:\n" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Map ID Num Vertices Num Edges" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<string, Map>::iterator it;
+
+  for (it = maps.begin(); it != maps.end(); it++) {
+    cout << it->first << "       " << it->second.num_vertices << "             " << it->second.num_edges << endl;
+  }
+
+  cout << "------------------------------------------" << endl;
 }
 
 vector<string> read_file() {
@@ -130,13 +145,6 @@ void construct_maps() {
       curr_map.maps = edge_map;
       curr_map.num_vertices = edge_map.size();
       maps[mapId] = curr_map;
-      cout << "map id: ";
-      cout << mapId << endl;
-      cout << "num edges: ";
-      cout << num_edges << endl;
-      cout << "num vertices: ";
-      cout << curr_map.num_vertices << endl;
-      cout << "-----" << endl;
     }
   }      
 }
@@ -193,6 +201,7 @@ int main(void) {
   freeaddrinfo(servinfo);
 
   printf(BOOT_UP_MESSAGE);
+  print_maps_info();
 
   addr_len = sizeof their_addr;
 
