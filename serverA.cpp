@@ -149,6 +149,10 @@ void construct_maps() {
   }      
 }
 
+string get_shortest_path(string map_id, string start_index) {
+  return "shortest map with id:" + map_id + " start index: " + start_index;
+}
+
 int main(void) {
   construct_maps();
 
@@ -219,5 +223,14 @@ int main(void) {
     printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
     printf("listener: packet contains \"%s\"\n", buf);
+
+    string message = string(buf);
+    int parse_index = message.find_first_of(" ");
+
+    string map_id = message.substr(0, parse_index);
+    string start_index = message.substr(parse_index + 1);
+
+    string map = get_shortest_path(map_id, start_index);
+    sendto(sockfd, map.c_str(), strlen(map.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
 }
