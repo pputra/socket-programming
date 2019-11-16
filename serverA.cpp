@@ -19,13 +19,12 @@
 
 using namespace std;
 
+#define INT_MAX 2147483647
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
-#define MAP_FILE_NAME "map.txt"
-
-vector<string> split_string_by_delimiter(string, string);
+#define MAP_FILE_NAME "map2.txt"
 
 struct Edge {
   int dest;
@@ -40,7 +39,107 @@ struct Map {
   int num_vertices;
 };
 
+void construct_maps();
+string get_shortest_path(string, int);
+vector<string> split_string_by_delimiter(string, string);
+int get_index_of_shortest_edge_from_source(map<int, int>&, map<int, bool>&);
+string convert_dijkstra_table_to_string(map<int, int>&);
+void print_maps_info();
+void *get_in_addr(struct sockaddr*);
+vector<string> read_file();
+void append_edges(int, int, int, map<int, vector<Edge> >&);
+void parse_edges(string , map<int, vector<Edge> >&);
+string create_response(string, int);
+void print_request(string&, string&);
+void print_shortest_path(map<int, int>&);
+void print_success_message();
+
 map<string, Map> maps;
+
+int main(void) {
+  construct_maps();
+
+  int sockfd;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  int numbytes;
+  struct sockaddr_storage their_addr;
+  char buf[MAXBUFLEN];
+  socklen_t addr_len;
+  char s[INET6_ADDRSTRLEN];
+
+  // set hints to be empty
+  memset(&hints, 0, sizeof hints);
+  // use either IPv4 or IPv6
+  hints.ai_family = AF_UNSPEC;
+  // set socket type to udp
+  hints.ai_socktype = SOCK_DGRAM;
+  // fill ip automatically
+  hints.ai_flags = AI_PASSIVE;
+
+  if ((rv = getaddrinfo(HOST_NAME, MYPORT, &hints, &servinfo)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    return 1;
+  }
+
+  // loop through all the results and bind to the first we can
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+        p->ai_protocol)) == -1) {
+      perror("listener: socket");
+      continue;
+    }
+
+    // avoid namespace conflict with std
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(sockfd);
+      perror("listener: bind");
+      continue;
+    }
+
+    break;
+  }
+
+  if (p == NULL) {
+    fprintf(stderr, "listener: failed to bind socket\n");
+    return 2;
+  }
+
+  freeaddrinfo(servinfo);
+
+  printf(BOOT_UP_MESSAGE);
+  print_maps_info();
+
+  addr_len = sizeof their_addr;
+
+  while (true) {
+    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
+        (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+      perror("recvfrom");
+      exit(1);
+    }
+
+    // printf("listener: got packet from %s\n",
+    // inet_ntop(their_addr.ss_family,
+    //     get_in_addr((struct sockaddr *)&their_addr),
+    //     s, sizeof s));
+    // printf("listener: packet is %d bytes long\n", numbytes);
+    buf[numbytes] = '\0';
+    // printf("listener: packet contains \"%s\"\n", buf);
+
+    vector<string> payloads = split_string_by_delimiter(string(buf), " ");
+
+    string map_id = payloads[0];
+    int start_index = atoi(payloads[1].c_str());
+
+    print_request(map_id, payloads[1]);
+
+    string response = create_response(map_id, start_index);
+  
+    sendto(sockfd, response.c_str(), strlen(response.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
+    print_success_message();
+  }
+}
 
 // get sockaddr, IPv4 or IPv6
 void *get_in_addr(struct sockaddr *sa) {
@@ -166,88 +265,125 @@ void construct_maps() {
   }      
 }
 
-string get_shortest_path(string map_id, string start_index) {
-  return "shortest map with id: " + map_id + " start index: " + start_index;
-}
+string get_shortest_path(string map_id, int start_index) {
+  Map selected_map = maps[map_id];
+  map<int, bool> isVisited;
+  map<int, int>  dijkstra_table;
 
-int main(void) {
-  construct_maps();
+  map<int, vector<Edge> >::iterator it = selected_map.maps.begin();
 
-  int sockfd;
-  struct addrinfo hints, *servinfo, *p;
-  int rv;
-  int numbytes;
-  struct sockaddr_storage their_addr;
-  char buf[MAXBUFLEN];
-  socklen_t addr_len;
-  char s[INET6_ADDRSTRLEN];
+  while (it != selected_map.maps.end()) {
+    Edge curr_edge;
 
-  // set hints to be empty
-  memset(&hints, 0, sizeof hints);
-  // use either IPv4 or IPv6
-  hints.ai_family = AF_UNSPEC;
-  // set socket type to udp
-  hints.ai_socktype = SOCK_DGRAM;
-  // fill ip automatically
-  hints.ai_flags = AI_PASSIVE;
+    curr_edge.dest = it->first;
+    dijkstra_table[it->first] = it->first == start_index ? 0 : INT_MAX;
 
-  if ((rv = getaddrinfo(HOST_NAME, MYPORT, &hints, &servinfo)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return 1;
+    isVisited[it->first] = false;
+
+    it++;
   }
-
-  // loop through all the results and bind to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) {
-    if ((sockfd = socket(p->ai_family, p->ai_socktype,
-        p->ai_protocol)) == -1) {
-      perror("listener: socket");
-      continue;
-    }
-
-    // avoid namespace conflict with std
-    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-      close(sockfd);
-      perror("listener: bind");
-      continue;
-    }
-
-    break;
-  }
-
-  if (p == NULL) {
-    fprintf(stderr, "listener: failed to bind socket\n");
-    return 2;
-  }
-
-  freeaddrinfo(servinfo);
-
-  printf(BOOT_UP_MESSAGE);
-  print_maps_info();
-
-  addr_len = sizeof their_addr;
 
   while (true) {
-    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
-        (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-      perror("recvfrom");
-      exit(1);
+    int index = get_index_of_shortest_edge_from_source(dijkstra_table, isVisited);
+
+    if (index == -1) break;
+
+    isVisited[index] = true;
+
+    vector<Edge> adjacent_nodes = selected_map.maps[index];
+
+    for (int i = 0; i < adjacent_nodes.size(); i++) {
+      Edge adjacent_node = adjacent_nodes[i];
+
+      int new_dist = adjacent_node.len + dijkstra_table[index];
+
+      if (new_dist < dijkstra_table[adjacent_node.dest]) {
+        dijkstra_table[adjacent_node.dest] = new_dist;
+      }
+    }
+  }
+
+  print_shortest_path(dijkstra_table);
+
+  return convert_dijkstra_table_to_string(dijkstra_table);
+}
+
+int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited) {
+  int min = INT_MAX;
+  int index = -1;
+
+  map<int, int>::iterator it = dijkstra_table.begin();
+
+  while (it != dijkstra_table.end()) {
+    if (dijkstra_table[it->first] <= min && !isVisited[it->first]) {
+      index = it->first;
+      min = dijkstra_table[it->first];
     }
 
-    printf("listener: got packet from %s\n",
-    inet_ntop(their_addr.ss_family,
-        get_in_addr((struct sockaddr *)&their_addr),
-        s, sizeof s));
-    printf("listener: packet is %d bytes long\n", numbytes);
-    buf[numbytes] = '\0';
-    printf("listener: packet contains \"%s\"\n", buf);
-
-    vector<string> payloads = split_string_by_delimiter(string(buf), " ");
-
-    string map_id = payloads[0];
-    string start_index = payloads[1];
-
-    string map = get_shortest_path(map_id, start_index);
-
-    sendto(sockfd, map.c_str(), strlen(map.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
+    it++;
   }
+
+  return index;
+}
+
+string convert_dijkstra_table_to_string(map<int, int> &dijkstra_table) {
+  map<int, int>::iterator it = dijkstra_table.begin();
+  string output = "";
+
+  while(it != dijkstra_table.end()) {
+    int node_index = it->first;
+    int distance_from_source = it->second;
+
+    if (distance_from_source != 0) {
+      output += to_string(node_index);
+      output += " ";
+      output += to_string(distance_from_source);
+      output += "-";
+    }
+
+    it++;
+  }
+
+  return output.substr(0, output.length() - 1);
+}
+
+void print_request(string &map_id, string &start_index) {
+  cout << endl;
+  cout << "The Server A has received input for finding shortest paths: starting vertex "
+    << start_index << " of map " << map_id << endl;
+}
+
+void print_shortest_path(map<int, int> &dijkstra_table) {
+  cout << endl;
+  cout << "The ServerA has identified the following shortest paths" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Destination Min Length" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<int, int>::iterator it = dijkstra_table.begin();
+
+  while (it != dijkstra_table.end()) {
+    int edge = it->first;
+    int dist = it->second;
+
+    if (dist > 0) {
+      cout << to_string(edge) << "               " << to_string(dist) << endl;
+    }
+
+    it++;
+  }
+  cout << "------------------------------------------" << endl;
+}
+
+void print_success_message() {
+  cout << endl;
+  cout << "The Server A has sent shortest paths to AWS." << endl;
+}
+
+string create_response(string map_id, int start_index) {
+  string map = get_shortest_path(map_id, start_index);
+  int prop_speed = maps[map_id].prop_speed;
+  int trans_speed = maps[map_id].trans_speed;
+
+  return map + "," + to_string(prop_speed) + "," + to_string(trans_speed);
 }

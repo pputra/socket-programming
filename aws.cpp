@@ -16,6 +16,7 @@
 #include <string>
 #include <ctype.h>
 #include <vector> 
+#include<map>
 
 using namespace std;
 
@@ -24,45 +25,30 @@ using namespace std;
 #define SERVER_A_PORT "21444" // serverA port
 #define SERVER_B_PORT "22444" // serverB port
 #define BACKLOG 10     // how many pending connections queue will hold
-#define BOOT_UP_MESSAGE "The AWS is up and running.\n"
+#define BOOT_UP_MESSAGE "The AWS is up and running.\n\n"
 
 #define MAXDATASIZE 10000 // max number of bytes we can get at once
 
-int request_shortest_path(string , string, string);
+struct Node {
+  int id;
+  int dist;
+  double trans_time;
+  double prop_time;
+  double delay_time;
+};
+
+struct Paths {
+  map<int, Node> node_map;
+  int trans_speed;
+  int prop_speed;
+};
+
+void sigchld_handler(int);
+void *get_in_addr(struct sockaddr*);
 vector<string> split_string_by_delimiter(string, string);
-
-void sigchld_handler(int s) {
-  // waitpid() might overwrite errno, so we save and restore it:
-  int saved_errno = errno;
-
-  while(waitpid(-1, NULL, WNOHANG) > 0);
-
-  errno = saved_errno;
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-vector<string> split_string_by_delimiter(string input, string delimiter) {
-  vector<string> strings;
-  int i = input.find_first_of(delimiter);
-
-  while (i != string::npos) {
-    string parsed_string = input.substr(0, i);
-    strings.push_back(parsed_string);
-    input = input.substr(i+1);
-    i = input.find_first_of(delimiter);
-  }
-
-  if (input.size() > 0) strings.push_back(input);
-  return strings;
-}
+int request_shortest_path(string, string, string);
+Paths create_paths(string);
+void print_shortest_paths(Paths&);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -174,6 +160,39 @@ int main(void) {
   return 0;
 }
 
+void sigchld_handler(int s) {
+  // waitpid() might overwrite errno, so we save and restore it:
+  int saved_errno = errno;
+
+  while(waitpid(-1, NULL, WNOHANG) > 0);
+
+  errno = saved_errno;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
+}
+
 int request_shortest_path(string destination_port, string map_id, string start_index) {
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
@@ -214,7 +233,8 @@ int request_shortest_path(string destination_port, string map_id, string start_i
 
     freeaddrinfo(servinfo);
 
-    cout << "the AWS has sent map ID and starting vertexto serverA using UDP over port " + destination_port << endl;
+    cout << endl;
+    cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " + destination_port << endl;
 
     char buf[MAXDATASIZE];
 
@@ -225,9 +245,58 @@ int request_shortest_path(string destination_port, string map_id, string start_i
     }
 
     buf[numbytes] = '\0';
-    printf("aws: packet contains \"%s\"\n", buf);
+    // printf("aws: packet contains \"%s\"\n", buf);
+
+    Paths paths = create_paths(string(buf));
+
+    print_shortest_paths(paths);
 
     close(sockfd);
 
     return 0;
+}
+
+Paths create_paths(string response) {
+  Paths paths;
+  vector<string> inputs = split_string_by_delimiter(response, ",");
+
+  paths.prop_speed = atoi(inputs[1].c_str());
+  paths.trans_speed = atoi(inputs[2].c_str());
+
+  vector<string> nodes = split_string_by_delimiter(inputs[0], "-");
+
+  for (int i = 0; i < nodes.size(); i++) {
+    vector<string> inner_inputs = split_string_by_delimiter(nodes[i], " ");
+    int id = atoi(inner_inputs[0].c_str());
+    int dist = atoi(inner_inputs[1].c_str());
+
+    Node node;
+    node.id = id;
+    node.dist = dist;
+
+    paths.node_map[id] = node;
+  }
+
+  return paths;
+}
+
+void print_shortest_paths(Paths &paths) {
+  cout << endl;
+  cout << "The AWS has received shortest path from server A:" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Destination Min Length" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    int dist = it->second.dist;
+
+    cout << to_string(id) << "               " << to_string(dist) << endl;
+
+    it++;
+  }
+
+  cout << "------------------------------------------" << endl;
 }
