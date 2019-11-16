@@ -19,6 +19,7 @@
 
 using namespace std;
 
+#define INT_MAX 2147483647
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100

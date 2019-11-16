@@ -258,7 +258,7 @@ int request_shortest_path(string destination_port, string map_id, string start_i
 
 Paths create_paths(string response) {
   Paths paths;
-  vector<string> inputs = split_string_by_delimiter(response, "x");
+  vector<string> inputs = split_string_by_delimiter(response, ",");
 
   paths.prop_speed = atoi(inputs[1].c_str());
   paths.trans_speed = atoi(inputs[2].c_str());
