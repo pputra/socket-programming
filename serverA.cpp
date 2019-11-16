@@ -39,17 +39,18 @@ struct Map {
 };
 
 void construct_maps();
-string get_shortest_path(string map_id, int start_index);
+string get_shortest_path(string, int);
 vector<string> split_string_by_delimiter(string, string);
-int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited);
-string convert_dijkstra_table_to_string(map<int, int> &dijkstra_table);
+int get_index_of_shortest_edge_from_source(map<int, int>&, map<int, bool>&);
+string convert_dijkstra_table_to_string(map<int, int>&);
 void print_maps_info();
-void *get_in_addr(struct sockaddr *sa);
+void *get_in_addr(struct sockaddr*);
 vector<string> read_file();
-void append_edges(int start_node, int dest_node, int edge_len, map<int, vector<Edge> > &edge_map);
-void parse_edges(string edge_str, map<int, vector<Edge> > &edge_map);
-void print_request(string &map_id, string &start_index);
-void print_shortest_path(map<int, int> &dijkstra_table);
+void append_edges(int, int, int, map<int, vector<Edge> >&);
+void parse_edges(string , map<int, vector<Edge> >&);
+string create_response(string, int);
+void print_request(string&, string&);
+void print_shortest_path(map<int, int>&);
 void print_success_message();
 
 map<string, Map> maps;
@@ -132,9 +133,9 @@ int main(void) {
 
     print_request(map_id, payloads[1]);
 
-    string map = get_shortest_path(map_id, start_index);
-
-    sendto(sockfd, map.c_str(), strlen(map.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
+    string response = create_response(map_id, start_index);
+  
+    sendto(sockfd, response.c_str(), strlen(response.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
     print_success_message();
   }
 }
@@ -376,4 +377,12 @@ void print_shortest_path(map<int, int> &dijkstra_table) {
 void print_success_message() {
   cout << endl;
   cout << "The Server A has sent shortest paths to AWS." << endl;
+}
+
+string create_response(string map_id, int start_index) {
+  string map = get_shortest_path(map_id, start_index);
+  int prop_speed = maps[map_id].prop_speed;
+  int trans_speed = maps[map_id].trans_speed;
+
+  return map + "," + to_string(prop_speed) + "," + to_string(trans_speed);
 }

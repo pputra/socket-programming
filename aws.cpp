@@ -28,41 +28,10 @@ using namespace std;
 
 #define MAXDATASIZE 10000 // max number of bytes we can get at once
 
-int request_shortest_path(string , string, string);
+void sigchld_handler(int);
+void *get_in_addr(struct sockaddr*);
 vector<string> split_string_by_delimiter(string, string);
-
-void sigchld_handler(int s) {
-  // waitpid() might overwrite errno, so we save and restore it:
-  int saved_errno = errno;
-
-  while(waitpid(-1, NULL, WNOHANG) > 0);
-
-  errno = saved_errno;
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-vector<string> split_string_by_delimiter(string input, string delimiter) {
-  vector<string> strings;
-  int i = input.find_first_of(delimiter);
-
-  while (i != string::npos) {
-    string parsed_string = input.substr(0, i);
-    strings.push_back(parsed_string);
-    input = input.substr(i+1);
-    i = input.find_first_of(delimiter);
-  }
-
-  if (input.size() > 0) strings.push_back(input);
-  return strings;
-}
+int request_shortest_path(string, string, string);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -172,6 +141,39 @@ int main(void) {
   }
 
   return 0;
+}
+
+void sigchld_handler(int s) {
+  // waitpid() might overwrite errno, so we save and restore it:
+  int saved_errno = errno;
+
+  while(waitpid(-1, NULL, WNOHANG) > 0);
+
+  errno = saved_errno;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
 }
 
 int request_shortest_path(string destination_port, string map_id, string start_index) {
