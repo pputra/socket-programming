@@ -39,7 +39,7 @@ struct Map {
 };
 
 vector<string> split_string_by_delimiter(string, string);
-int get_index_of_shortest_edge_from_source(vector<Edge> &dijkstra_table, map<int, bool> &isVisited);
+int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited);
 
 map<string, Map> maps;
 
@@ -170,7 +170,7 @@ void construct_maps() {
 string get_shortest_path(string map_id, int start_index) {
   Map selected_map = maps[map_id];
   map<int, bool> isVisited;
-  vector<Edge> dijkstra_table;
+  map<int, int>  dijkstra_table;
 
   map<int, vector<Edge> >::iterator it = selected_map.maps.begin();
 
@@ -178,8 +178,7 @@ string get_shortest_path(string map_id, int start_index) {
     Edge curr_edge;
 
     curr_edge.dest = it->first;
-    curr_edge.len = it->first == start_index ? 0 : INT_MAX;
-    dijkstra_table.push_back(curr_edge);
+    dijkstra_table[it->first] = it->first == start_index ? 0 : INT_MAX;
 
     isVisited[it->first] = false;
 
@@ -188,23 +187,27 @@ string get_shortest_path(string map_id, int start_index) {
   
   int index = get_index_of_shortest_edge_from_source(dijkstra_table, isVisited);
 
-  cout << "shortest edge: "  << dijkstra_table[index].dest << endl;
+  cout << "shortest edge: "  << index << endl;
   
   return "shortest map with id: " + map_id + " start index: " + to_string(start_index);
 }
 
-int get_index_of_shortest_edge_from_source(vector<Edge> &dijkstra_table, map<int, bool> &isVisited) {
+int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited) {
   int min = INT_MAX;
   int index = -1;
 
-  for (int i = 0; i < dijkstra_table.size(); i++) {
-    Edge edge = dijkstra_table[i];
+  map<int, int>::iterator it = dijkstra_table.begin();
 
-    if (edge.len <= min && !isVisited[edge.dest]) {
-      index = i;
-      min = edge.len;
+  while (it != dijkstra_table.end()) {
+    if (dijkstra_table[it->first] <= min && !isVisited[it->first]) {
+      index = it->first;
+      min = dijkstra_table[it->first];
     }
+
+    it++;
   }
+
+  cout << index << endl;
 
   return index;
 }
