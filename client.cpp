@@ -13,6 +13,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+
 using namespace std;
 
 #define AWS_PORT "24444" // the port client will be connecting to 
@@ -20,21 +22,13 @@ using namespace std;
 
 #define MAXDATASIZE 100 // max number of bytes we can get at once
 
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-string parse_inputs(char *argv[]) {
-   return string(argv[1]) + " " + 
-    string(argv[2]) + " " + string(argv[3]);
-}
+void *get_in_addr(struct sockaddr*);
+string parse_inputs(char*[]);
+vector<string> split_string_by_delimiter(string, string);
+void print_sent_message(string, string, string);
 
 int main(int argc, char *argv[]) {
+  cout << "The client is up and running" << endl;
   int sockfd, numbytes;  
   char buf[MAXDATASIZE];
   struct addrinfo hints, *servinfo, *p;
@@ -47,6 +41,11 @@ int main(int argc, char *argv[]) {
   }
 
   string user_inputs = parse_inputs(argv);
+  vector<string> inputs = split_string_by_delimiter(user_inputs, " ");
+  
+  string start_index = inputs[1];
+  string map_id = inputs[0];
+  string file_size = inputs[2];
  
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
@@ -78,7 +77,7 @@ int main(int argc, char *argv[]) {
   }
 
   inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
-  printf("client: connecting to %s\n", s);
+  // printf("client: connecting to %s\n", s);
 
   freeaddrinfo(servinfo);
 
@@ -86,9 +85,44 @@ int main(int argc, char *argv[]) {
      perror("send");
   }
 
-  printf("data has been sent to AWS server\n");
+  print_sent_message(start_index, map_id, file_size);
 
   close(sockfd);
 
   return 0;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+string parse_inputs(char *argv[]) {
+   return string(argv[1]) + " " + 
+    string(argv[2]) + " " + string(argv[3]);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
+}
+
+void print_sent_message(string start_index, string map_id, string file_size) {
+  cout << endl;
+  cout << "The client has sent query to AWS using TCP over port " << AWS_PORT << ":start vertex "
+    << start_index << "; map "  << map_id << "; file size " << file_size << "." << endl;
 }
