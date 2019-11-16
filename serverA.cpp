@@ -25,6 +25,8 @@ using namespace std;
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
 #define MAP_FILE_NAME "map.txt"
 
+vector<string> split_string_by_delimiter(string, string);
+
 struct Edge {
   int dest;
   int len;
@@ -77,6 +79,21 @@ vector<string> read_file() {
   file.close();
 
   return inputs;
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
 }
 
 void append_edges(int start_node, int dest_node, int edge_len, map<int, vector<Edge> > &edge_map) {
@@ -150,7 +167,7 @@ void construct_maps() {
 }
 
 string get_shortest_path(string map_id, string start_index) {
-  return "shortest map with id:" + map_id + " start index: " + start_index;
+  return "shortest map with id: " + map_id + " start index: " + start_index;
 }
 
 int main(void) {
@@ -224,13 +241,13 @@ int main(void) {
     buf[numbytes] = '\0';
     printf("listener: packet contains \"%s\"\n", buf);
 
-    string message = string(buf);
-    int parse_index = message.find_first_of(" ");
+    vector<string> payloads = split_string_by_delimiter(string(buf), " ");
 
-    string map_id = message.substr(0, parse_index);
-    string start_index = message.substr(parse_index + 1);
+    string map_id = payloads[0];
+    string start_index = payloads[1];
 
     string map = get_shortest_path(map_id, start_index);
+
     sendto(sockfd, map.c_str(), strlen(map.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
 }

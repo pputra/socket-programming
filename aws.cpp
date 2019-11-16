@@ -29,6 +29,7 @@ using namespace std;
 #define MAXDATASIZE 10000 // max number of bytes we can get at once
 
 int request_shortest_path(string , string, string);
+vector<string> split_string_by_delimiter(string, string);
 
 void sigchld_handler(int s) {
   // waitpid() might overwrite errno, so we save and restore it:
@@ -46,6 +47,21 @@ void *get_in_addr(struct sockaddr *sa) {
   }
 
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
 }
 
 int main(void) {
@@ -123,7 +139,7 @@ int main(void) {
       get_in_addr((struct sockaddr *)&their_addr),
       s, sizeof s);
   
-    printf("server: got connection from %s\n", s);
+    // printf("server: got connection from %s\n", s);
 
     if (!fork()) { // this is the child process
       close(sockfd); // child doesn't need the listener
@@ -135,22 +151,14 @@ int main(void) {
       }
 
       buf[numbytes] = '\0';
-
-      string map_id;
-      string source_vertex_index;
-      string file_size;
+      
       string message = string(buf);
 
-      int parse_index = message.find_first_of(" ");
-      map_id = message.substr(0, parse_index);
-      
-      message = message.substr(parse_index + 1);
+      vector<string> client_payloads = split_string_by_delimiter(message, " ");
 
-      parse_index = message.find_first_of(" ");
-      source_vertex_index = message.substr(parse_index);
-
-      message = message.substr(parse_index + 1);
-      file_size = message;
+      string map_id = client_payloads[0];
+      string source_vertex_index = client_payloads[1];
+      string file_size = client_payloads[2];
 
       cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + file_size + " from the client using TCP over port " + TCP_PORT;
       cout << endl;
