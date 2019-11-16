@@ -23,7 +23,7 @@ using namespace std;
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
-#define MAP_FILE_NAME "map.txt"
+#define MAP_FILE_NAME "map2.txt"
 
 struct Edge {
   int dest;
@@ -40,6 +40,7 @@ struct Map {
 
 vector<string> split_string_by_delimiter(string, string);
 int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited);
+string convert_dijkstra_table_to_string(map<int, int> &dijkstra_table);
 
 map<string, Map> maps;
 
@@ -184,12 +185,31 @@ string get_shortest_path(string map_id, int start_index) {
 
     it++;
   }
-  
-  int index = get_index_of_shortest_edge_from_source(dijkstra_table, isVisited);
 
-  cout << "shortest edge: "  << index << endl;
-  
-  return "shortest map with id: " + map_id + " start index: " + to_string(start_index);
+  while (true) {
+    int index = get_index_of_shortest_edge_from_source(dijkstra_table, isVisited);
+
+    if (index == -1) break;
+
+    isVisited[index] = true;
+
+    vector<Edge> adjacent_nodes = selected_map.maps[index];
+
+    for (int i = 0; i < adjacent_nodes.size(); i++) {
+      Edge adjacent_node = adjacent_nodes[i];
+
+      int new_dist = adjacent_node.len + dijkstra_table[index];
+
+      if (new_dist < dijkstra_table[adjacent_node.dest]) {
+        dijkstra_table[adjacent_node.dest] = new_dist;
+      }
+    }
+  }
+
+
+
+
+  return convert_dijkstra_table_to_string(dijkstra_table);
 }
 
 int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<int, bool> &isVisited) {
@@ -207,9 +227,28 @@ int get_index_of_shortest_edge_from_source(map<int, int> &dijkstra_table, map<in
     it++;
   }
 
-  cout << index << endl;
-
   return index;
+}
+
+string convert_dijkstra_table_to_string(map<int, int> &dijkstra_table) {
+  map<int, int>::iterator it = dijkstra_table.begin();
+  string output = "";
+
+  while(it != dijkstra_table.end()) {
+    int node_index = it->first;
+    int distance_from_source = it->second;
+
+    if (distance_from_source != 0) {
+      output += to_string(node_index);
+      output += " ";
+      output += to_string(distance_from_source);
+      output += "-";
+    }
+
+    it++;
+  }
+
+  return output.substr(0, output.length() - 1);
 }
 
 int main(void) {
