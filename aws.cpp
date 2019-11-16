@@ -11,12 +11,25 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include <vector> 
+
+using namespace std;
+
 #define TCP_PORT "24444"  // the port users will be connecting to
 #define HOST_NAME "localhost" // hostname
+#define SERVER_A_PORT "21444" // serverA port
+#define SERVER_B_PORT "22444" // serverB port
 #define BACKLOG 10     // how many pending connections queue will hold
 #define BOOT_UP_MESSAGE "The AWS is up and running.\n"
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once
+#define MAXDATASIZE 10000 // max number of bytes we can get at once
+
+int request_shortest_path(string , string, string);
+vector<string> split_string_by_delimiter(string, string);
 
 void sigchld_handler(int s) {
   // waitpid() might overwrite errno, so we save and restore it:
@@ -34,6 +47,21 @@ void *get_in_addr(struct sockaddr *sa) {
   }
 
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
 }
 
 int main(void) {
@@ -68,7 +96,7 @@ int main(void) {
       exit(1);
     }
 
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("server: bind");
       continue;
@@ -111,7 +139,7 @@ int main(void) {
       get_in_addr((struct sockaddr *)&their_addr),
       s, sizeof s);
   
-    printf("server: got connection from %s\n", s);
+    // printf("server: got connection from %s\n", s);
 
     if (!fork()) { // this is the child process
       close(sockfd); // child doesn't need the listener
@@ -123,7 +151,19 @@ int main(void) {
       }
 
       buf[numbytes] = '\0';
-      printf("aws: received '%s'\n",buf);
+      
+      string message = string(buf);
+
+      vector<string> client_payloads = split_string_by_delimiter(message, " ");
+
+      string map_id = client_payloads[0];
+      string source_vertex_index = client_payloads[1];
+      string file_size = client_payloads[2];
+
+      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + file_size + " from the client using TCP over port " + TCP_PORT;
+      cout << endl;
+
+      request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
 
       close(new_fd);
       exit(0);
@@ -132,4 +172,62 @@ int main(void) {
   }
 
   return 0;
+}
+
+int request_shortest_path(string destination_port, string map_id, string start_index) {
+  int sockfd;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  int numbytes;
+  string message = map_id + " " + start_index;
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+
+  if ((rv = getaddrinfo(HOST_NAME, destination_port.c_str(), &hints, &servinfo)) != 0) {
+      fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+      return 1;
+  }
+
+  // loop through all the results and make a socket
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+            p->ai_protocol)) == -1) {
+        perror("talker: socket");
+        continue;
+    }
+
+    break;
+  }
+
+  if (p == NULL) {
+    fprintf(stderr, "aws: failed to create socket\n");
+    return 2;
+  }
+
+    if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
+            p->ai_addr, p->ai_addrlen)) == -1) {
+      perror("aws: sendto");
+      exit(1);
+    }
+
+    freeaddrinfo(servinfo);
+
+    cout << "the AWS has sent map ID and starting vertexto serverA using UDP over port " + destination_port << endl;
+
+    char buf[MAXDATASIZE];
+
+    if ((numbytes = recvfrom(sockfd, buf, MAXDATASIZE-1 , 0,
+        p->ai_addr, &p->ai_addrlen)) == -1) {
+      perror("recvfrom");
+      exit(1);
+    }
+
+    buf[numbytes] = '\0';
+    printf("aws: packet contains \"%s\"\n", buf);
+
+    close(sockfd);
+
+    return 0;
 }

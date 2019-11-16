@@ -1,5 +1,5 @@
 all:
-	g++ -o serverA serverA.cpp
-	g++ -o serverB serverB.cpp
-	g++ -o aws aws.cpp
-	g++ -o client client.cpp
+	g++ -ggdb -o serverA serverA.cpp
+	g++ -ggdb -o serverB serverB.cpp
+	g++ -ggdb -o aws aws.cpp
+	g++ -ggdb -o client client.cpp

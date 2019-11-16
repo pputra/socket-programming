@@ -10,10 +10,37 @@
 #include <arpa/inet.h> 
 #include <sys/wait.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include <map>
+#include <vector> 
+
+using namespace std;
+
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
-#define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n"
+#define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
+#define MAP_FILE_NAME "map.txt"
+
+vector<string> split_string_by_delimiter(string, string);
+
+struct Edge {
+  int dest;
+  int len;
+};
+
+struct Map {
+  int prop_speed;
+  int trans_speed;
+  map<int, vector<Edge> > maps;
+  int num_edges;
+  int num_vertices;
+};
+
+map<string, Map> maps;
 
 // get sockaddr, IPv4 or IPv6
 void *get_in_addr(struct sockaddr *sa) {
@@ -24,7 +51,128 @@ void *get_in_addr(struct sockaddr *sa) {
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void print_maps_info() {
+  cout << "The Server A has constructed a list of " <<  maps.size() << " maps:\n" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Map ID Num Vertices Num Edges" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<string, Map>::iterator it;
+
+  for (it = maps.begin(); it != maps.end(); it++) {
+    cout << it->first << "       " << it->second.num_vertices << "             " << it->second.num_edges << endl;
+  }
+
+  cout << "------------------------------------------" << endl;
+}
+
+vector<string> read_file() {
+  vector<string> inputs;
+  string line;
+  ifstream file(MAP_FILE_NAME);
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      inputs.push_back(line);
+    }
+  }
+
+  file.close();
+
+  return inputs;
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
+}
+
+void append_edges(int start_node, int dest_node, int edge_len, map<int, vector<Edge> > &edge_map) {
+  Edge edge;
+  edge.dest = dest_node;
+  edge.len = edge_len;
+
+  vector<Edge> prev_edges;
+
+  if (edge_map.find(start_node) != edge_map.end()) {
+    prev_edges = edge_map[start_node];
+  }
+
+  prev_edges.push_back(edge);
+  edge_map[start_node] = prev_edges;
+}
+
+void parse_edges(string edge_str, map<int, vector<Edge> > &edge_map) {
+  int start_node;
+  int dest_node;
+  int edge_len;
+
+  int stop_index = edge_str.find_first_of(" ");
+  
+  start_node = atoi(edge_str.substr(0, stop_index).c_str());
+
+  edge_str = edge_str.substr(stop_index + 1);
+  stop_index = edge_str.find_first_of(" ");
+  dest_node = atoi(edge_str.substr(0, stop_index).c_str());
+
+  edge_str = edge_str.substr(stop_index + 1);
+  edge_len = atoi(edge_str.c_str());
+
+  append_edges(start_node, dest_node, edge_len, edge_map);
+  append_edges(dest_node, start_node, edge_len, edge_map);
+}
+
+void construct_maps() {
+  vector<string> inputs = read_file();
+
+  for (int i = 0; i < inputs.size(); i++) {
+    string input = inputs[i];
+    int num_edges = 1;
+
+    if (isalpha(input[0])) {
+      Map curr_map;
+      string mapId = input;
+      map<int, vector<Edge> > edge_map;
+
+      curr_map.prop_speed = atoi(inputs[++i].c_str());
+      curr_map.trans_speed = atoi(inputs[++i].c_str());
+
+      i++;
+      while (true) {
+        if (i+1 >= inputs.size() || isalpha(inputs[i+1][0])) {
+          break;
+        }
+        string curr_edge_str = inputs[i];
+
+        parse_edges(curr_edge_str, edge_map);
+
+        num_edges++;
+        i++;
+      }
+      curr_map.num_edges = num_edges;
+      curr_map.maps = edge_map;
+      curr_map.num_vertices = edge_map.size();
+      maps[mapId] = curr_map;
+    }
+  }      
+}
+
+string get_shortest_path(string map_id, string start_index) {
+  return "shortest map with id: " + map_id + " start index: " + start_index;
+}
+
 int main(void) {
+  construct_maps();
+
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;
@@ -56,7 +204,8 @@ int main(void) {
       continue;
     }
 
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    // avoid namespace conflict with std
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("listener: bind");
       continue;
@@ -73,10 +222,11 @@ int main(void) {
   freeaddrinfo(servinfo);
 
   printf(BOOT_UP_MESSAGE);
+  print_maps_info();
 
   addr_len = sizeof their_addr;
 
-  while (1) {
+  while (true) {
     if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
       perror("recvfrom");
@@ -90,5 +240,14 @@ int main(void) {
     printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
     printf("listener: packet contains \"%s\"\n", buf);
+
+    vector<string> payloads = split_string_by_delimiter(string(buf), " ");
+
+    string map_id = payloads[0];
+    string start_index = payloads[1];
+
+    string map = get_shortest_path(map_id, start_index);
+
+    sendto(sockfd, map.c_str(), strlen(map.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
 }
