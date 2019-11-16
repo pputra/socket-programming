@@ -25,8 +25,6 @@ using namespace std;
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
 #define MAP_FILE_NAME "map.txt"
 
-vector<string> split_string_by_delimiter(string, string);
-
 struct Edge {
   int dest;
   int len;
@@ -39,6 +37,9 @@ struct Map {
   int num_edges;
   int num_vertices;
 };
+
+vector<string> split_string_by_delimiter(string, string);
+int get_index_of_shortest_edge_from_source(vector<Edge> &dijkstra_table, map<int, bool> &isVisited);
 
 map<string, Map> maps;
 
@@ -166,8 +167,46 @@ void construct_maps() {
   }      
 }
 
-string get_shortest_path(string map_id, string start_index) {
-  return "shortest map with id: " + map_id + " start index: " + start_index;
+string get_shortest_path(string map_id, int start_index) {
+  Map selected_map = maps[map_id];
+  map<int, bool> isVisited;
+  vector<Edge> dijkstra_table;
+
+  map<int, vector<Edge> >::iterator it = selected_map.maps.begin();
+
+  while (it != selected_map.maps.end()) {
+    Edge curr_edge;
+
+    curr_edge.dest = it->first;
+    curr_edge.len = it->first == start_index ? 0 : INT_MAX;
+    dijkstra_table.push_back(curr_edge);
+
+    isVisited[it->first] = false;
+
+    it++;
+  }
+  
+  int index = get_index_of_shortest_edge_from_source(dijkstra_table, isVisited);
+
+  cout << "shortest edge: "  << dijkstra_table[index].dest << endl;
+  
+  return "shortest map with id: " + map_id + " start index: " + to_string(start_index);
+}
+
+int get_index_of_shortest_edge_from_source(vector<Edge> &dijkstra_table, map<int, bool> &isVisited) {
+  int min = INT_MAX;
+  int index = -1;
+
+  for (int i = 0; i < dijkstra_table.size(); i++) {
+    Edge edge = dijkstra_table[i];
+
+    if (edge.len <= min && !isVisited[edge.dest]) {
+      index = i;
+      min = edge.len;
+    }
+  }
+
+  return index;
 }
 
 int main(void) {
@@ -244,7 +283,7 @@ int main(void) {
     vector<string> payloads = split_string_by_delimiter(string(buf), " ");
 
     string map_id = payloads[0];
-    string start_index = payloads[1];
+    int start_index = atoi(payloads[1].c_str());
 
     string map = get_shortest_path(map_id, start_index);
 
