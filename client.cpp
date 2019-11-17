@@ -19,8 +19,7 @@ using namespace std;
 
 #define AWS_PORT "24444" // the port client will be connecting to 
 #define HOST_NAME "localhost"
-
-#define MAXDATASIZE 100 // max number of bytes we can get at once
+#define MAXDATASIZE 100000 // max number of bytes we can get at once
 
 void *get_in_addr(struct sockaddr*);
 string parse_inputs(char*[]);
@@ -86,6 +85,10 @@ int main(int argc, char *argv[]) {
   }
 
   print_sent_message(start_index, map_id, file_size);
+
+  recv(sockfd, buf, MAXDATASIZE - 1, 0);
+
+  cout << buf << endl;
 
   close(sockfd);
 

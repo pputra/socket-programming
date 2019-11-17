@@ -155,6 +155,9 @@ int main(void) {
 
       request_delays(SERVER_B_PORT,file_size, paths);
 
+      string result = "result";
+      send(new_fd, result.c_str(), result.length(), 0);
+
       close(new_fd);
       exit(0);
     }
