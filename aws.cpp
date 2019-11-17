@@ -32,15 +32,15 @@ using namespace std;
 struct Node {
   int id;
   int dist;
-  double trans_time;
-  double prop_time;
-  double delay_time;
+  long double trans_time;
+  long double prop_time;
+  long double delay_time;
 };
 
 struct Paths {
   map<int, Node> node_map;
-  int trans_speed;
-  int prop_speed;
+  long double trans_speed;
+  long double prop_speed;
 };
 
 void sigchld_handler(int);
@@ -260,8 +260,8 @@ Paths create_paths(string response) {
   Paths paths;
   vector<string> inputs = split_string_by_delimiter(response, ",");
 
-  paths.prop_speed = atoi(inputs[1].c_str());
-  paths.trans_speed = atoi(inputs[2].c_str());
+  paths.prop_speed = stold(inputs[1]);
+  paths.trans_speed = stold(inputs[2]);
 
   vector<string> nodes = split_string_by_delimiter(inputs[0], "-");
 
