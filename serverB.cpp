@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <map>
 #include <vector> 
+#include <cmath>
 
 using namespace std;
 
@@ -47,6 +48,7 @@ void calculate_delay(Paths&);
 long double calculate_transmission_time(long double, long long);
 long double calculate_propagation_time(long double, int);
 void print_calculations_result(Paths&);
+string to_string_decimal_place(double, int);
 
 int main(void) {
   int sockfd;
@@ -219,10 +221,23 @@ void print_calculations_result(Paths &paths) {
     int id = it->first;
     long double delay = it->second.delay_time;
 
-    cout << to_string(id) << "                         " << to_string(delay) << endl;
+    cout << to_string(id) << "                         " << to_string_decimal_place(delay, 2) << endl;
     
     it++;
   }
 
   cout << "------------------------------------------" << endl;
+}
+
+string to_string_decimal_place(double value, int decimal_place) {
+  // modified version of this : https://stackoverflow.com/a/57459521/9560865
+  double multiplier = pow(10.0, decimal_place);
+  double rounded = round(value * multiplier) / multiplier;
+
+  string val = to_string(rounded);
+  int point_index = val.find_first_of(".");
+
+  val = val.substr(0, point_index + decimal_place + 1);
+
+  return val;
 }
