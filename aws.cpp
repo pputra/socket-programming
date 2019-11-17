@@ -49,7 +49,8 @@ vector<string> split_string_by_delimiter(string, string);
 Paths request_shortest_path(string, string, string);
 Paths create_paths(string);
 void print_shortest_paths(Paths&);
-void request_delays(string, Paths&);
+void request_delays(string, long, Paths&);
+string create_payload_to_server_b(long, Paths&);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -145,14 +146,14 @@ int main(void) {
 
       string map_id = client_payloads[0];
       string source_vertex_index = client_payloads[1];
-      string file_size = client_payloads[2];
+      long file_size = stol(client_payloads[2]);
 
-      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + file_size + " from the client using TCP over port " + TCP_PORT;
+      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + TCP_PORT;
       cout << endl;
 
       Paths paths = request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
 
-      request_delays(SERVER_B_PORT, paths);
+      request_delays(SERVER_B_PORT,file_size, paths);
 
       close(new_fd);
       exit(0);
@@ -304,12 +305,12 @@ void print_shortest_paths(Paths &paths) {
   cout << "------------------------------------------" << endl;
 }
 
-void request_delays(string destination_port, Paths &paths) {
+void request_delays(string destination_port, long file_size, Paths &paths) {
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;
   int numbytes;
-  string message = "hello server b";
+  string message = create_payload_to_server_b(file_size, paths);
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
@@ -358,4 +359,34 @@ void request_delays(string destination_port, Paths &paths) {
   buf[numbytes] = '\0';
 
   cout << string(buf) << endl;
+}
+
+// payload format: node_id distance_from_origin (using '-' as delimiter), filesize, prop_speed, trans_speed
+string create_payload_to_server_b(long file_size, Paths &paths) {
+  map<int, Node>::iterator it = paths.node_map.begin();
+  string output = "";
+
+  while(it != paths.node_map.end()) {
+    int node_index = it->first;
+    int distance_from_source = it->second.dist;
+
+    if (distance_from_source != 0) {
+      output += to_string(node_index);
+      output += " ";
+      output += to_string(distance_from_source);
+      output += "-";
+    }
+
+    it++;
+  }
+
+  output = output.substr(0, output.length() - 1);
+  output += ",";
+  output += to_string(file_size);
+  output += ",";
+  output += to_string(paths.prop_speed);
+  output += ",";
+  output += to_string(paths.trans_speed);
+
+  return output;
 }
