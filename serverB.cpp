@@ -10,19 +10,22 @@
 #include <arpa/inet.h> 
 #include <sys/wait.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include <map>
+#include <vector> 
+
+using namespace std;
+
 #define MYPORT "22444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
 
-// get sockaddr, IPv4 or IPv6
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
+vector<string> split_string_by_delimiter(string, string);
+void *get_in_addr(struct sockaddr*);
 
 int main(void) {
   int sockfd;
@@ -56,7 +59,7 @@ int main(void) {
       continue;
     }
 
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("listener: bind");
       continue;
@@ -90,5 +93,32 @@ int main(void) {
     printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
     printf("listener: packet contains \"%s\"\n", buf);
+
+    string response = "delay result";
+    sendto(sockfd, response.c_str(), strlen(response.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
+}
+
+// get sockaddr, IPv4 or IPv6
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
 }

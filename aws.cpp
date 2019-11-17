@@ -46,9 +46,10 @@ struct Paths {
 void sigchld_handler(int);
 void *get_in_addr(struct sockaddr*);
 vector<string> split_string_by_delimiter(string, string);
-int request_shortest_path(string, string, string);
+Paths request_shortest_path(string, string, string);
 Paths create_paths(string);
 void print_shortest_paths(Paths&);
+void request_delays(string, Paths&);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -149,7 +150,9 @@ int main(void) {
       cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + file_size + " from the client using TCP over port " + TCP_PORT;
       cout << endl;
 
-      request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
+      Paths paths = request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
+
+      request_delays(SERVER_B_PORT, paths);
 
       close(new_fd);
       exit(0);
@@ -193,7 +196,7 @@ vector<string> split_string_by_delimiter(string input, string delimiter) {
   return strings;
 }
 
-int request_shortest_path(string destination_port, string map_id, string start_index) {
+Paths request_shortest_path(string destination_port, string map_id, string start_index) {
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;
@@ -206,7 +209,7 @@ int request_shortest_path(string destination_port, string map_id, string start_i
 
   if ((rv = getaddrinfo(HOST_NAME, destination_port.c_str(), &hints, &servinfo)) != 0) {
       fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-      return 1;
+      exit(1);
   }
 
   // loop through all the results and make a socket
@@ -222,7 +225,7 @@ int request_shortest_path(string destination_port, string map_id, string start_i
 
   if (p == NULL) {
     fprintf(stderr, "aws: failed to create socket\n");
-    return 2;
+    exit(1);
   }
 
     if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
@@ -253,7 +256,7 @@ int request_shortest_path(string destination_port, string map_id, string start_i
 
     close(sockfd);
 
-    return 0;
+    return paths;
 }
 
 Paths create_paths(string response) {
@@ -299,4 +302,60 @@ void print_shortest_paths(Paths &paths) {
   }
 
   cout << "------------------------------------------" << endl;
+}
+
+void request_delays(string destination_port, Paths &paths) {
+  int sockfd;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  int numbytes;
+  string message = "hello server b";
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+
+  if ((rv = getaddrinfo(HOST_NAME, destination_port.c_str(), &hints, &servinfo)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    exit(1);
+  }
+
+  // loop through all the results and make a socket
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+            p->ai_protocol)) == -1) {
+      perror("talker: socket");
+      continue;
+    }
+
+    break;
+  }
+
+  if (p == NULL) {
+    fprintf(stderr, "aws: failed to create socket\n");
+    exit(1);
+  }
+
+  if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
+          p->ai_addr, p->ai_addrlen)) == -1) {
+    perror("aws: sendto");
+    exit(1);
+  }
+
+  freeaddrinfo(servinfo);
+
+  cout << endl;
+  cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " + destination_port << endl;
+
+  char buf[MAXDATASIZE];
+
+  if ((numbytes = recvfrom(sockfd, buf, MAXDATASIZE-1 , 0,
+      p->ai_addr, &p->ai_addrlen)) == -1) {
+    perror("recvfrom");
+    exit(1);
+  }
+
+  buf[numbytes] = '\0';
+
+  cout << string(buf) << endl;
 }
