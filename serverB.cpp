@@ -48,7 +48,7 @@ void calculate_delay(Paths&);
 long double calculate_transmission_time(long double, long long);
 long double calculate_propagation_time(long double, int);
 void print_calculations_result(Paths&);
-string to_string_decimal_place(double, int);
+string to_string_decimal_place(long double, int);
 
 int main(void) {
   int sockfd;
@@ -229,7 +229,7 @@ void print_calculations_result(Paths &paths) {
   cout << "------------------------------------------" << endl;
 }
 
-string to_string_decimal_place(double value, int decimal_place) {
+string to_string_decimal_place(long double value, int decimal_place) {
   // modified version of this : https://stackoverflow.com/a/57459521/9560865
   double multiplier = pow(10.0, decimal_place);
   double rounded = round(value * multiplier) / multiplier;
