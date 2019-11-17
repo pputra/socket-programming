@@ -43,6 +43,10 @@ vector<string> split_string_by_delimiter(string, string);
 void *get_in_addr(struct sockaddr*);
 Paths create_paths(string);
 void print_requested_paths_data(Paths&);
+void calculate_delay(Paths&);
+long double calculate_transmission_time(long double, long long);
+long double calculate_propagation_time(long double, int);
+void print_calculations_result(Paths&);
 
 int main(void) {
   int sockfd;
@@ -108,6 +112,8 @@ int main(void) {
     Paths paths = create_paths(buf);
 
     print_requested_paths_data(paths);
+    calculate_delay(paths);
+    print_calculations_result(paths);
     string response = "delay result";
     sendto(sockfd, response.c_str(), strlen(response.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
@@ -173,9 +179,50 @@ void print_requested_paths_data(Paths &paths) {
   while (it != paths.node_map.end()) {
     int id = it->first;
     int dist = it->second.dist;
-
-    cout << "Path lengthfor destination " << to_string(id) << ": " << to_string(dist) << endl;
+    cout << "Path length for destination " << to_string(id) << ": " << to_string(dist) << endl;
 
     it++;
   }
+}
+
+void calculate_delay(Paths &paths) {
+  map<int, Node>::iterator it = paths.node_map.begin();
+  long long file_size = paths.file_size;
+  long double trans_speed = paths.trans_speed;
+  long double prop_speed = paths.prop_speed;
+  while (it != paths.node_map.end()) {
+    it->second.trans_time = calculate_transmission_time(trans_speed, file_size);
+    it->second.prop_time = calculate_propagation_time(prop_speed, it->second.dist);
+    it->second.delay_time = it->second.trans_time + it->second.prop_time;
+
+    it++;
+  }
+}
+
+long double calculate_transmission_time(long double trans_speed, long long file_size) {
+  return (file_size / 8) / trans_speed;
+}
+
+long double calculate_propagation_time(long double prop_speed, int dist) {
+  return dist / prop_speed;
+}
+
+void print_calculations_result(Paths &paths) {
+  cout << endl;
+  cout << "The Server B has finished the calculation of the delays:" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Destination                Delay" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    long double delay = it->second.delay_time;
+
+    cout << to_string(id) << "                         " << to_string(delay) << endl;
+    
+    it++;
+  }
+
+  cout << "------------------------------------------" << endl;
 }

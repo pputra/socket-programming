@@ -355,7 +355,7 @@ void print_request(string &map_id, string &start_index) {
 
 void print_shortest_path(map<int, int> &dijkstra_table) {
   cout << endl;
-  cout << "The ServerA has identified the following shortest paths" << endl;
+  cout << "The Server A has identified the following shortest paths:" << endl;
   cout << "------------------------------------------" << endl;
   cout << "Destination Min Length" << endl;
   cout << "------------------------------------------" << endl;
