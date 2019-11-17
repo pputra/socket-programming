@@ -24,8 +24,25 @@ using namespace std;
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
 
+struct Node {
+  int id;
+  int dist;
+  long double trans_time;
+  long double prop_time;
+  long double delay_time;
+};
+
+struct Paths {
+  map<int, Node> node_map;
+  long double trans_speed;
+  long double prop_speed;
+  long file_size;
+};
+
 vector<string> split_string_by_delimiter(string, string);
 void *get_in_addr(struct sockaddr*);
+Paths create_paths(string);
+void print_requested_paths_data(Paths&);
 
 int main(void) {
   int sockfd;
@@ -86,14 +103,11 @@ int main(void) {
       exit(1);
     }
 
-    // printf("listener: got packet from %s\n",
-    // inet_ntop(their_addr.ss_family,
-    //     get_in_addr((struct sockaddr *)&their_addr),
-    //     s, sizeof s));
-    // printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
-    printf("listener: packet contains \"%s\"\n", buf);
+  
+    Paths paths = create_paths(buf);
 
+    print_requested_paths_data(paths);
     string response = "delay result";
     sendto(sockfd, response.c_str(), strlen(response.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
   }
@@ -121,4 +135,47 @@ vector<string> split_string_by_delimiter(string input, string delimiter) {
 
   if (input.size() > 0) strings.push_back(input);
   return strings;
+}
+
+Paths create_paths(string response) {
+  Paths paths;
+  vector<string> inputs = split_string_by_delimiter(response, ",");
+
+  paths.file_size = (stol(inputs[1]));
+  paths.prop_speed = stold(inputs[2]);
+  paths.trans_speed = stold(inputs[3]);
+
+  vector<string> nodes = split_string_by_delimiter(inputs[0], "-");
+
+  for (int i = 0; i < nodes.size(); i++) {
+    vector<string> inner_inputs = split_string_by_delimiter(nodes[i], " ");
+    int id = atoi(inner_inputs[0].c_str());
+    int dist = atoi(inner_inputs[1].c_str());
+
+    Node node;
+    node.id = id;
+    node.dist = dist;
+
+    paths.node_map[id] = node;
+  }
+
+  return paths;
+}
+
+void print_requested_paths_data(Paths &paths) {
+  cout << endl;
+  cout << "The Server B has received data for calculation:" << endl;
+  cout << "* Propagation speed: "  <<  to_string(paths.prop_speed)  << " km/s;" << endl;
+  cout << "* Transmission speed: "  <<  to_string(paths.trans_speed)  << " Bytes/s;" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    int dist = it->second.dist;
+
+    cout << "Path lengthfor destination " << to_string(id) << ": " << to_string(dist) << endl;
+
+    it++;
+  }
 }
