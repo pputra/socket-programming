@@ -36,7 +36,7 @@ struct Paths {
   map<int, Node> node_map;
   long double trans_speed;
   long double prop_speed;
-  long file_size;
+  long long file_size;
 };
 
 vector<string> split_string_by_delimiter(string, string);
@@ -141,7 +141,7 @@ Paths create_paths(string response) {
   Paths paths;
   vector<string> inputs = split_string_by_delimiter(response, ",");
 
-  paths.file_size = (stol(inputs[1]));
+  paths.file_size = (stoll(inputs[1]));
   paths.prop_speed = stold(inputs[2]);
   paths.trans_speed = stold(inputs[3]);
 

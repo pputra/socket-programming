@@ -49,8 +49,8 @@ vector<string> split_string_by_delimiter(string, string);
 Paths request_shortest_path(string, string, string);
 Paths create_paths(string);
 void print_shortest_paths(Paths&);
-void request_delays(string, long, Paths&);
-string create_payload_to_server_b(long, Paths&);
+void request_delays(string, long long, Paths&);
+string create_payload_to_server_b(long long, Paths&);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -146,8 +146,8 @@ int main(void) {
 
       string map_id = client_payloads[0];
       string source_vertex_index = client_payloads[1];
-      long file_size = stol(client_payloads[2]);
-
+      long long file_size = stoll(client_payloads[2]);
+      
       cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + TCP_PORT;
       cout << endl;
 
@@ -305,7 +305,7 @@ void print_shortest_paths(Paths &paths) {
   cout << "------------------------------------------" << endl;
 }
 
-void request_delays(string destination_port, long file_size, Paths &paths) {
+void request_delays(string destination_port, long long file_size, Paths &paths) {
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;
@@ -362,7 +362,7 @@ void request_delays(string destination_port, long file_size, Paths &paths) {
 }
 
 // payload format: node_id distance_from_origin (using '-' as delimiter), filesize, prop_speed, trans_speed
-string create_payload_to_server_b(long file_size, Paths &paths) {
+string create_payload_to_server_b(long long file_size, Paths &paths) {
   map<int, Node>::iterator it = paths.node_map.begin();
   string output = "";
 
