@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <vector> 
 #include<map>
+#include <cmath>
 
 using namespace std;
 
@@ -51,6 +52,9 @@ Paths create_paths(string);
 void print_shortest_paths(Paths&);
 void request_delays(string, long long, Paths&);
 string create_payload_to_server_b(long long, Paths&);
+void parse_delay_calculation_result(Paths&, string);
+void print_delay_result(Paths&);
+string to_string_decimal_place(long double, int);
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -351,17 +355,19 @@ void request_delays(string destination_port, long long file_size, Paths &paths) 
   cout << endl;
   cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " + destination_port << endl;
 
-  char buf[MAXDATASIZE];
+  char delay_calculation_result[MAXDATASIZE];
 
-  if ((numbytes = recvfrom(sockfd, buf, MAXDATASIZE-1 , 0,
+  if ((numbytes = recvfrom(sockfd, delay_calculation_result, MAXDATASIZE-1 , 0,
       p->ai_addr, &p->ai_addrlen)) == -1) {
     perror("recvfrom");
     exit(1);
   }
 
-  buf[numbytes] = '\0';
+  delay_calculation_result[numbytes] = '\0';
 
-  cout << string(buf) << endl;
+  parse_delay_calculation_result(paths, delay_calculation_result);
+
+  print_delay_result(paths);
 }
 
 // payload format: node_id distance_from_origin (using '-' as delimiter), filesize, prop_speed, trans_speed
@@ -392,4 +398,57 @@ string create_payload_to_server_b(long long file_size, Paths &paths) {
   output += to_string(paths.trans_speed);
 
   return output;
+}
+
+void parse_delay_calculation_result(Paths &paths, string result) {
+  vector<string> split_result = split_string_by_delimiter(result, "-");
+
+  for (int i = 0; i < split_result.size(); i++) {
+    vector<string> delays = split_string_by_delimiter(split_result[i], " ");
+    int id = stoi(delays[0]);
+    long double trans_time = stold(delays[1]);
+    long double prop_time = stold(delays[2]);
+    long double delay_time = stold(delays[3]);
+
+    paths.node_map[id].trans_time = trans_time;
+    paths.node_map[id].prop_time = prop_time;
+    paths.node_map[id].delay_time = delay_time;
+  }
+}
+
+void print_delay_result(Paths &paths) {
+  cout << endl;
+  cout << "The AWS has received delays from server B:" << endl;
+  cout << "-------------------------------------------------" << endl;
+  cout << "Destination        Tt        Tp        Delay" << endl;
+  cout << "-------------------------------------------------" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    long double trans_time = it->second.trans_time;
+    long double prop_time = it->second.prop_time;
+    long double delay = it->second.delay_time;
+
+    cout << to_string(id) << "                " << to_string_decimal_place(trans_time, 2) 
+      << "     " << to_string_decimal_place(prop_time, 2) << "     " 
+      << to_string_decimal_place(delay, 2) << endl;
+    
+    it++;
+  }
+
+  cout << "-------------------------------------------------" << endl;
+}
+
+string to_string_decimal_place(long double value, int decimal_place) {
+  // modified version of this : https://stackoverflow.com/a/57459521/9560865
+  double multiplier = pow(10.0, decimal_place);
+  double rounded = round(value * multiplier) / multiplier;
+
+  string val = to_string(rounded);
+  int point_index = val.find_first_of(".");
+
+  val = val.substr(0, point_index + decimal_place + 1);
+
+  return val;
 }
