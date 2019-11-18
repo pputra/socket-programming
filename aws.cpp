@@ -55,6 +55,8 @@ string create_payload_to_server_b(long long, Paths&);
 void parse_delay_calculation_result(Paths&, string);
 void print_delay_result(Paths&);
 string to_string_decimal_place(long double, int);
+string create_response_to_client(Paths &paths);
+void print_success_message();
 
 int main(void) {
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
@@ -159,7 +161,7 @@ int main(void) {
 
       request_delays(SERVER_B_PORT,file_size, paths);
 
-      string result = "result";
+      string result = create_response_to_client(paths);
       send(new_fd, result.c_str(), result.length(), 0);
 
       close(new_fd);
@@ -451,4 +453,31 @@ string to_string_decimal_place(long double value, int decimal_place) {
   val = val.substr(0, point_index + decimal_place + 1);
 
   return val;
+}
+
+// response format: id dist trans_time prop_time delay_time (delimiter: -)
+string create_response_to_client(Paths &paths) {
+  map<int, Node>::iterator it = paths.node_map.begin();
+  string response = "";
+
+  while (it != paths.node_map.end()) {
+    response  += to_string(it->second.id);
+    response += " ";
+    response += to_string(it->second.dist);
+    response += " ";
+    response += to_string(it->second.trans_time);
+    response += " ";
+    response += to_string(it->second.prop_time);
+    response += " ";
+    response += to_string(it->second.delay_time);
+    response += "-";
+
+    it++;
+  }
+
+  return response.substr(0, response.length() - 1);
+}
+
+void print_success_message() {
+  cout << "The AWS has sent calculated delay to client using TCP over port " << TCP_PORT;
 }
