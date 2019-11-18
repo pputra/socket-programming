@@ -32,8 +32,8 @@ struct Edge {
 };
 
 struct Map {
-  int prop_speed;
-  int trans_speed;
+  long double prop_speed;
+  long double trans_speed;
   map<int, vector<Edge> > maps;
   int num_edges;
   int num_vertices;
@@ -242,8 +242,8 @@ void construct_maps() {
       string mapId = input;
       map<int, vector<Edge> > edge_map;
 
-      curr_map.prop_speed = atoi(inputs[++i].c_str());
-      curr_map.trans_speed = atoi(inputs[++i].c_str());
+      curr_map.prop_speed = stold(inputs[++i]);
+      curr_map.trans_speed = stold(inputs[++i]);
 
       i++;
       while (true) {
@@ -355,7 +355,7 @@ void print_request(string &map_id, string &start_index) {
 
 void print_shortest_path(map<int, int> &dijkstra_table) {
   cout << endl;
-  cout << "The ServerA has identified the following shortest paths" << endl;
+  cout << "The Server A has identified the following shortest paths:" << endl;
   cout << "------------------------------------------" << endl;
   cout << "Destination Min Length" << endl;
   cout << "------------------------------------------" << endl;
@@ -382,8 +382,8 @@ void print_success_message() {
 
 string create_response(string map_id, int start_index) {
   string map = get_shortest_path(map_id, start_index);
-  int prop_speed = maps[map_id].prop_speed;
-  int trans_speed = maps[map_id].trans_speed;
+  long double prop_speed = maps[map_id].prop_speed;
+  long double trans_speed = maps[map_id].trans_speed;
 
   return map + "," + to_string(prop_speed) + "," + to_string(trans_speed);
 }

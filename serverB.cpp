@@ -10,19 +10,47 @@
 #include <arpa/inet.h> 
 #include <sys/wait.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <ctype.h>
+#include <map>
+#include <vector> 
+#include <cmath>
+
+using namespace std;
+
 #define MYPORT "22444"
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100
 #define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
 
-// get sockaddr, IPv4 or IPv6
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
+struct Node {
+  int id;
+  int dist;
+  long double trans_time;
+  long double prop_time;
+  long double delay_time;
+};
 
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
+struct Paths {
+  map<int, Node> node_map;
+  long double trans_speed;
+  long double prop_speed;
+  long long file_size;
+};
+
+vector<string> split_string_by_delimiter(string, string);
+void *get_in_addr(struct sockaddr*);
+Paths create_paths(string);
+void print_requested_paths_data(Paths&);
+void calculate_delay(Paths&);
+long double calculate_transmission_time(long double, long long);
+long double calculate_propagation_time(long double, int);
+void print_calculations_result(Paths&);
+string to_string_decimal_place(long double, int);
+string create_response(Paths&);
+void print_success_message();
 
 int main(void) {
   int sockfd;
@@ -56,7 +84,7 @@ int main(void) {
       continue;
     }
 
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+    if (::bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("listener: bind");
       continue;
@@ -83,12 +111,162 @@ int main(void) {
       exit(1);
     }
 
-    printf("listener: got packet from %s\n",
-    inet_ntop(their_addr.ss_family,
-        get_in_addr((struct sockaddr *)&their_addr),
-        s, sizeof s));
-    printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
-    printf("listener: packet contains \"%s\"\n", buf);
+  
+    Paths paths = create_paths(buf);
+
+    print_requested_paths_data(paths);
+    calculate_delay(paths);
+    print_calculations_result(paths);
+    string result = create_response(paths);
+    sendto(sockfd, result.c_str(), strlen(result.c_str()), 0, (struct sockaddr *)&their_addr, addr_len);
+    print_success_message();
   }
+}
+
+// get sockaddr, IPv4 or IPv6
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+vector<string> split_string_by_delimiter(string input, string delimiter) {
+  vector<string> strings;
+  int i = input.find_first_of(delimiter);
+
+  while (i != string::npos) {
+    string parsed_string = input.substr(0, i);
+    strings.push_back(parsed_string);
+    input = input.substr(i+1);
+    i = input.find_first_of(delimiter);
+  }
+
+  if (input.size() > 0) strings.push_back(input);
+  return strings;
+}
+
+Paths create_paths(string response) {
+  Paths paths;
+  vector<string> inputs = split_string_by_delimiter(response, ",");
+
+  paths.file_size = (stoll(inputs[1]));
+  paths.prop_speed = stold(inputs[2]);
+  paths.trans_speed = stold(inputs[3]);
+
+  vector<string> nodes = split_string_by_delimiter(inputs[0], "-");
+
+  for (int i = 0; i < nodes.size(); i++) {
+    vector<string> inner_inputs = split_string_by_delimiter(nodes[i], " ");
+    int id = atoi(inner_inputs[0].c_str());
+    int dist = atoi(inner_inputs[1].c_str());
+
+    Node node;
+    node.id = id;
+    node.dist = dist;
+
+    paths.node_map[id] = node;
+  }
+
+  return paths;
+}
+
+void print_requested_paths_data(Paths &paths) {
+  cout << endl;
+  cout << "The Server B has received data for calculation:" << endl;
+  cout << "* Propagation speed: "  <<  to_string(paths.prop_speed)  << " km/s;" << endl;
+  cout << "* Transmission speed: "  <<  to_string(paths.trans_speed)  << " Bytes/s;" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    int dist = it->second.dist;
+    cout << "Path length for destination " << to_string(id) << ": " << to_string(dist) << endl;
+
+    it++;
+  }
+}
+
+void calculate_delay(Paths &paths) {
+  map<int, Node>::iterator it = paths.node_map.begin();
+  long long file_size = paths.file_size;
+  long double trans_speed = paths.trans_speed;
+  long double prop_speed = paths.prop_speed;
+  while (it != paths.node_map.end()) {
+    it->second.trans_time = calculate_transmission_time(trans_speed, file_size);
+    it->second.prop_time = calculate_propagation_time(prop_speed, it->second.dist);
+    it->second.delay_time = it->second.trans_time + it->second.prop_time;
+
+    it++;
+  }
+}
+
+long double calculate_transmission_time(long double trans_speed, long long file_size) {
+  return (file_size / 8) / trans_speed;
+}
+
+long double calculate_propagation_time(long double prop_speed, int dist) {
+  return dist / prop_speed;
+}
+
+void print_calculations_result(Paths &paths) {
+  cout << endl;
+  cout << "The Server B has finished the calculation of the delays:" << endl;
+  cout << "------------------------------------------" << endl;
+  cout << "Destination                Delay" << endl;
+  cout << "------------------------------------------" << endl;
+
+  map<int, Node>::iterator it = paths.node_map.begin();
+  while (it != paths.node_map.end()) {
+    int id = it->first;
+    long double delay = it->second.delay_time;
+
+    cout << to_string(id) << "                         " << to_string_decimal_place(delay, 2) << endl;
+    
+    it++;
+  }
+
+  cout << "------------------------------------------" << endl;
+}
+
+string to_string_decimal_place(long double value, int decimal_place) {
+  // modified version of this : https://stackoverflow.com/a/57459521/9560865
+  double multiplier = pow(10.0, decimal_place);
+  double rounded = round(value * multiplier) / multiplier;
+
+  string val = to_string(rounded);
+  int point_index = val.find_first_of(".");
+
+  val = val.substr(0, point_index + decimal_place + 1);
+
+  return val;
+}
+
+// payload format: node_id trans_time, prop_time delay_time (delimiter: -)
+string create_response(Paths &paths) {
+  map<int, Node>::iterator it = paths.node_map.begin();
+  string response = "";
+
+  while (it != paths.node_map.end()) {
+    response  += to_string(it->second.id);
+    response += " ";
+    response += to_string(it->second.trans_time);
+    response += " ";
+    response += to_string(it->second.prop_time);
+    response += " ";
+    response += to_string(it->second.delay_time);
+    response += "-";
+
+    it++;
+  }
+
+  return response.substr(0, response.length() - 1);
+}
+
+void print_success_message() {
+  cout << endl;
+  cout << "The Server B has finished sending the output to AWS" << endl;
 }
