@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 using namespace std;
 
@@ -25,6 +26,8 @@ void *get_in_addr(struct sockaddr*);
 string parse_inputs(char*[]);
 vector<string> split_string_by_delimiter(string, string);
 void print_sent_message(string, string, string);
+void print_calculation_result(string);
+string to_string_decimal_place(long double, int);
 
 int main(int argc, char *argv[]) {
   cout << "The client is up and running" << endl;
@@ -86,9 +89,11 @@ int main(int argc, char *argv[]) {
 
   print_sent_message(start_index, map_id, file_size);
 
-  recv(sockfd, buf, MAXDATASIZE - 1, 0);
+  char result[MAXDATASIZE];
 
-  cout << buf << endl;
+  recv(sockfd, result, MAXDATASIZE - 1, 0);
+
+  print_calculation_result(result);
 
   close(sockfd);
 
@@ -128,4 +133,43 @@ void print_sent_message(string start_index, string map_id, string file_size) {
   cout << endl;
   cout << "The client has sent query to AWS using TCP over port " << AWS_PORT << ":start vertex "
     << start_index << "; map "  << map_id << "; file size " << file_size << "." << endl;
+}
+
+void print_calculation_result(string result) {
+  vector<string> split_result = split_string_by_delimiter(result, "-");
+
+  cout << endl;
+  cout << "The AWS has received delays from server B:" << endl;
+  cout << "----------------------------------------------------------------------------" << endl;
+  cout << "Destination    Min Length           Tt               Tp             Delay" << endl;
+  cout << "----------------------------------------------------------------------------" << endl;
+
+  for (int i = 0; i < split_result.size(); i++) {
+    vector<string> node_data = split_string_by_delimiter(split_result[i], " ");
+    int id = stoi(node_data[0]);
+    int dist = stoi(node_data[1]);
+    long double trans_time = stold(node_data[2]);
+    long double prop_time = stold(node_data[3]);
+    long double delay_time = stold(node_data[4]);
+
+     cout << to_string(id) << "                " << to_string(dist) << "                  " 
+      << to_string_decimal_place(trans_time, 2) 
+      << "         " << to_string_decimal_place(prop_time, 2) << "          " 
+      << to_string_decimal_place(delay_time, 2) << endl;
+  }
+
+  cout << "----------------------------------------------------------------------------" << endl;
+}
+
+string to_string_decimal_place(long double value, int decimal_place) {
+  // modified version of this : https://stackoverflow.com/a/57459521/9560865
+  double multiplier = pow(10.0, decimal_place);
+  double rounded = round(value * multiplier) / multiplier;
+
+  string val = to_string(rounded);
+  int point_index = val.find_first_of(".");
+
+  val = val.substr(0, point_index + decimal_place + 1);
+
+  return val;
 }
