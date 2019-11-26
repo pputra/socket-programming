@@ -128,7 +128,7 @@ vector<string> split_string_by_delimiter(string input, string delimiter) {
 
 void print_sent_message(string start_index, string map_id, string file_size) {
   cout << endl;
-  cout << "The client has sent query to AWS using TCP over port " << AWS_PORT << ":start vertex "
+  cout << "The client has sent query to AWS using TCP: start vertex "
     << start_index << "; map "  << map_id << "; file size " << file_size << "." << endl;
 }
 
