@@ -98,8 +98,6 @@ int main(void) {
     return 2;
   }
 
-  freeaddrinfo(servinfo);
-
   printf(BOOT_UP_MESSAGE);
 
   addr_len = sizeof their_addr;

@@ -105,8 +105,6 @@ int main(void) {
     return 2;
   }
 
-  freeaddrinfo(servinfo);
-
   printf(BOOT_UP_MESSAGE);
   print_maps_info();
 
@@ -119,14 +117,8 @@ int main(void) {
       exit(1);
     }
 
-    // printf("listener: got packet from %s\n",
-    // inet_ntop(their_addr.ss_family,
-    //     get_in_addr((struct sockaddr *)&their_addr),
-    //     s, sizeof s));
-    // printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
-    // printf("listener: packet contains \"%s\"\n", buf);
-
+    
     vector<string> payloads = split_string_by_delimiter(string(buf), " ");
 
     string map_id = payloads[0];

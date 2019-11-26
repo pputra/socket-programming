@@ -79,10 +79,7 @@ int main(int argc, char *argv[]) {
   }
 
   inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
-  // printf("client: connecting to %s\n", s);
-
-  freeaddrinfo(servinfo);
-
+  
   if (send(sockfd, user_inputs.c_str(), user_inputs.length(), 0) == -1) {
      perror("send");
   }

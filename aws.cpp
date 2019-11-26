@@ -99,8 +99,6 @@ int main(void) {
     break;
   }
 
-  freeaddrinfo(servinfo); // all done with this structure
-
   if (p == NULL)  {
     fprintf(stderr, "server: failed to bind\n");
     exit(1);
@@ -133,8 +131,6 @@ int main(void) {
       get_in_addr((struct sockaddr *)&their_addr),
       s, sizeof s);
   
-    // printf("server: got connection from %s\n", s);
-
     if (!fork()) { // this is the child process
       close(sockfd); // child doesn't need the listener
       char buf[MAXDATASIZE];
@@ -244,8 +240,6 @@ Paths request_shortest_path(string destination_port, string map_id, string start
       exit(1);
     }
 
-    freeaddrinfo(servinfo);
-
     cout << endl;
     cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " + destination_port << endl;
 
@@ -258,7 +252,6 @@ Paths request_shortest_path(string destination_port, string map_id, string start
     }
 
     buf[numbytes] = '\0';
-    // printf("aws: packet contains \"%s\"\n", buf);
 
     Paths paths = create_paths(string(buf));
 
@@ -351,8 +344,6 @@ void request_delays(string destination_port, long long file_size, Paths &paths) 
     perror("aws: sendto");
     exit(1);
   }
-
-  freeaddrinfo(servinfo);
 
   cout << endl;
   cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " + destination_port << endl;
