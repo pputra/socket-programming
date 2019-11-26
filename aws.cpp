@@ -21,7 +21,7 @@
 
 using namespace std;
 
-#define TCP_PORT "24444"  // the port users will be connecting to
+#define DEFAULT_PORT "24444"  // the port users will be connecting to
 #define HOST_NAME "localhost" // hostname
 #define SERVER_A_PORT "21444" // serverA port
 #define SERVER_B_PORT "22444" // serverB port
@@ -73,7 +73,7 @@ int main(void) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE; // use my IP
 
-  if ((rv = getaddrinfo(HOST_NAME, TCP_PORT, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(HOST_NAME, DEFAULT_PORT, &hints, &servinfo)) != 0) {
       fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
       return 1;
   }
@@ -150,7 +150,7 @@ int main(void) {
       string source_vertex_index = client_payloads[1];
       long long file_size = stoll(client_payloads[2]);
       
-      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + TCP_PORT;
+      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + DEFAULT_PORT;
       cout << endl;
 
       Paths paths = request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
@@ -241,7 +241,7 @@ Paths request_shortest_path(string destination_port, string map_id, string start
     }
 
     cout << endl;
-    cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " + destination_port << endl;
+    cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " << DEFAULT_PORT << endl;
 
     char buf[MAXDATASIZE];
 
@@ -346,7 +346,7 @@ void request_delays(string destination_port, long long file_size, Paths &paths) 
   }
 
   cout << endl;
-  cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " + destination_port << endl;
+  cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " << DEFAULT_PORT << endl;
 
   char delay_calculation_result[MAXDATASIZE];
 
@@ -470,5 +470,5 @@ string create_response_to_client(Paths &paths) {
 }
 
 void print_success_message() {
-  cout << "The AWS has sent calculated delay to client using TCP over port " << TCP_PORT;
+  cout << "The AWS has sent calculated delay to client using TCP over port " << DEFAULT_PORT;
 }
