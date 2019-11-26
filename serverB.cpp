@@ -22,7 +22,7 @@ using namespace std;
 
 #define MYPORT "22444"
 #define HOST_NAME "localhost"
-#define MAXBUFLEN 100
+#define MAXBUFLEN 100000
 #define BOOT_UP_MESSAGE "The Server B is up and running using UDP on port 22444\n"
 
 struct Node {

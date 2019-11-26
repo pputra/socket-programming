@@ -28,7 +28,7 @@ using namespace std;
 #define BACKLOG 10     // how many pending connections queue will hold
 #define BOOT_UP_MESSAGE "The AWS is up and running.\n\n"
 
-#define MAXDATASIZE 10000 // max number of bytes we can get at once
+#define MAXDATASIZE 100000 // max number of bytes we can get at once
 
 struct Node {
   int id;

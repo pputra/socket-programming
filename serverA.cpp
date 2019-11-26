@@ -22,7 +22,7 @@ using namespace std;
 #define INT_MAX 2147483647
 #define MYPORT "21444"
 #define HOST_NAME "localhost"
-#define MAXBUFLEN 100
+#define MAXBUFLEN 100000
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
 #define MAP_FILE_NAME "map2.txt"
 
