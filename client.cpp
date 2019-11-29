@@ -136,7 +136,7 @@ void print_calculation_result(string result) {
   vector<string> split_result = split_string_by_delimiter(result, "-");
 
   cout << endl;
-  cout << "The AWS has received delays from server B:" << endl;
+  cout << "The client has received results from AWS:" << endl;
   cout << "----------------------------------------------------------------------------" << endl;
   cout << "Destination    Min Length           Tt               Tp             Delay" << endl;
   cout << "----------------------------------------------------------------------------" << endl;

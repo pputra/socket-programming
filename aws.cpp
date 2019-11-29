@@ -21,7 +21,8 @@
 
 using namespace std;
 
-#define DEFAULT_PORT "24444"  // the port users will be connecting to
+#define TCP_PORT "24444"  // aws tcp port
+#define UDP_PORT "23444" // aws udp port
 #define HOST_NAME "localhost" // hostname
 #define SERVER_A_PORT "21444" // serverA port
 #define SERVER_B_PORT "22444" // serverB port
@@ -46,6 +47,7 @@ struct Paths {
 
 void sigchld_handler(int);
 void *get_in_addr(struct sockaddr*);
+int setUDP();
 vector<string> split_string_by_delimiter(string, string);
 Paths request_shortest_path(string, string, string);
 Paths create_paths(string);
@@ -58,7 +60,12 @@ string to_string_decimal_place(long double, int);
 string create_response_to_client(Paths &paths);
 void print_success_message();
 
+// aws udp
+int udp_sockfd;
+
 int main(void) {
+  udp_sockfd = setUDP();
+
   int sockfd, new_fd, numbytes;  // listen on sock_fd, new connection on new_fd
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr; // connector's address information
@@ -73,7 +80,7 @@ int main(void) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE; // use my IP
 
-  if ((rv = getaddrinfo(HOST_NAME, DEFAULT_PORT, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(HOST_NAME, TCP_PORT, &hints, &servinfo)) != 0) {
       fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
       return 1;
   }
@@ -150,7 +157,7 @@ int main(void) {
       string source_vertex_index = client_payloads[1];
       long long file_size = stoll(client_payloads[2]);
       
-      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + DEFAULT_PORT;
+      cout << "The AWS has received map ID " + map_id + ", start vertex " + source_vertex_index + " and file size " + client_payloads[2] + " from the client using TCP over port " + TCP_PORT;
       cout << endl;
 
       Paths paths = request_shortest_path(SERVER_A_PORT, map_id, source_vertex_index);
@@ -185,6 +192,38 @@ void *get_in_addr(struct sockaddr *sa) {
   }
 
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+int setUDP() {
+  int sockfd;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  int numbytes;
+  
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  string udp_port = UDP_PORT;
+
+  if ((rv = getaddrinfo(HOST_NAME, udp_port.c_str(), &hints, &servinfo)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    exit(1);
+  }
+
+  // loop through all the results and make a socket
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+            p->ai_protocol)) == -1) {
+      perror("talker: socket");
+      continue;
+    }
+
+    break;
+  }
+
+  return sockfd;
 }
 
 vector<string> split_string_by_delimiter(string input, string delimiter) {
@@ -234,18 +273,18 @@ Paths request_shortest_path(string destination_port, string map_id, string start
     exit(1);
   }
 
-    if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
+    if ((numbytes = sendto(udp_sockfd, message.c_str(), strlen(message.c_str()), 0,
             p->ai_addr, p->ai_addrlen)) == -1) {
       perror("aws: sendto");
       exit(1);
     }
 
     cout << endl;
-    cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " << DEFAULT_PORT << endl;
+    cout << "the AWS has sent map ID and starting vertex to server A using UDP over port " << UDP_PORT << endl;
 
     char buf[MAXDATASIZE];
 
-    if ((numbytes = recvfrom(sockfd, buf, MAXDATASIZE-1 , 0,
+    if ((numbytes = recvfrom(udp_sockfd, buf, MAXDATASIZE-1 , 0,
         p->ai_addr, &p->ai_addrlen)) == -1) {
       perror("recvfrom");
       exit(1);
@@ -339,18 +378,18 @@ void request_delays(string destination_port, long long file_size, Paths &paths) 
     exit(1);
   }
 
-  if ((numbytes = sendto(sockfd, message.c_str(), strlen(message.c_str()), 0,
+  if ((numbytes = sendto(udp_sockfd, message.c_str(), strlen(message.c_str()), 0,
           p->ai_addr, p->ai_addrlen)) == -1) {
     perror("aws: sendto");
     exit(1);
   }
 
   cout << endl;
-  cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " << DEFAULT_PORT << endl;
+  cout << "The AWS has sent path length, propagation speed and transmission speed to server B using UDP over port " << UDP_PORT << endl;
 
   char delay_calculation_result[MAXDATASIZE];
 
-  if ((numbytes = recvfrom(sockfd, delay_calculation_result, MAXDATASIZE-1 , 0,
+  if ((numbytes = recvfrom(udp_sockfd, delay_calculation_result, MAXDATASIZE-1 , 0,
       p->ai_addr, &p->ai_addrlen)) == -1) {
     perror("recvfrom");
     exit(1);
@@ -470,5 +509,5 @@ string create_response_to_client(Paths &paths) {
 }
 
 void print_success_message() {
-  cout << "The AWS has sent calculated delay to client using TCP over port " << DEFAULT_PORT;
+  cout << "The AWS has sent calculated delay to client using TCP over port " << TCP_PORT;
 }

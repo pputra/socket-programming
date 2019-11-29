@@ -24,7 +24,7 @@ using namespace std;
 #define HOST_NAME "localhost"
 #define MAXBUFLEN 100000
 #define BOOT_UP_MESSAGE "The Server A is up and running using UDP on port 21444\n\n"
-#define MAP_FILE_NAME "map2.txt"
+#define MAP_FILE_NAME "map.txt"
 
 struct Edge {
   int dest;
